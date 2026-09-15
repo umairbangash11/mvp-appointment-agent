@@ -20,9 +20,9 @@ That skill assumed a generic `staff` table with roles (`doctor`/`front_desk`/`ad
 - SendGrid (`sendgrid` Python SDK) for verification and password-reset emails
 - `slowapi` for rate limiting (in-memory limiter; adequate for a single-instance MVP deployment — swap to a Redis-backed store before horizontally scaling, since in-memory counters don't share state across instances)
 
-## Env config additions (owned by [[env-config-skill]])
+## Env config additions
 
-This skill needs variables that skill didn't yet define — add them to its `Settings` schema, all **required**:
+This skill's own required env vars, all **required**:
 
 | Variable | Purpose |
 |---|---|
@@ -103,11 +103,11 @@ The requirements list "Doctor Dashboard Data" as feature #8, but the API endpoin
 ## Security rules
 
 - Passwords: bcrypt, minimum 8 characters, never logged, never stored/returned in plaintext anywhere including error messages.
-- `JWT_SECRET` from env only ([[env-config-skill]]), never hardcoded.
+- `JWT_SECRET` from env only, never hardcoded.
 - Rate limiting on `login` and `forgot-password` via `slowapi`.
 - Generic error messages on login/forgot-password to prevent user enumeration.
 - All `/auth/*` endpoints except `signup`, `login`, `verify-email`, `forgot-password`, `reset-password` require a valid, non-revoked JWT via a shared FastAPI dependency.
-- HIPAA-aware: this skill handles account credentials, not PHI directly, but ties into [[hipaa-compliance-skill]]'s broader posture — auto-logout and no-secrets-in-localStorage are enforced on the frontend side ([[frontend-dashboard-skill]]); this skill's job is making sure the tokens it issues can actually be revoked so those frontend controls have real teeth server-side.
+- HIPAA-aware: this skill handles account credentials, not PHI directly, but ties into the HIPAA/NABIDH rules owned by [[whatsapp-skill]] — auto-logout and no-secrets-in-localStorage are enforced on the frontend side ([[frontend-dashboard-skill]]); this skill's job is making sure the tokens it issues can actually be revoked so those frontend controls have real teeth server-side.
 
 ## Out of scope
 

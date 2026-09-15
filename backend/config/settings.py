@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # PHI Encryption
-    ENCRYPTION_KEY: str = ""
-
     # Groq
     GROQ_API_KEY: str = ""
     GROQ_WHISPER_MODEL: str = "whisper-large-v3"
@@ -52,12 +49,21 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
     FRONTEND_URL: str = "http://localhost:3000"
 
-    # Clinic FAQ (WhatsApp agent)
-    CLINIC_NAME: str = "Your Medical Clinic"
-    CLINIC_HOURS: str = "Sunday-Thursday 9:00 AM - 6:00 PM (Asia/Dubai)"
-    CLINIC_ADDRESS: str = "Dubai, UAE"
-    CLINIC_PHONE: str = "+9715XXXXXXX"
-    ACCEPTED_INSURANCE: List[str] = ["Daman", "AXA", "MetLife", "Oman Insurance (Sukoon)", "Nextcare"]
+    # Clinic / doctor info (WhatsApp agent)
+    CLINIC_NAME: str = "Dr. Wasim's Clinic"
+    CLINIC_PHONE: str = "+92 300 0000000"
+    CLINIC_ADDRESS: str = "Islamabad, Pakistan"
+
+    # Doctor
+    DOCTOR_NAME: str = "Dr. Wasim"
+
+    # Two clinic locations — Mon/Tue/Wed vs Thu/Fri/Sat
+    CLINIC_F10: str = "F10 Clinic"
+    CLINIC_BAHRIA: str = "Bahria Phase 4 Clinic"
+
+    # Kept for backward compat / FAQ answers
+    CLINIC_HOURS: str = "Monday–Saturday 9:00 AM – 5:00 PM (Sunday closed)"
+    ACCEPTED_INSURANCE: List[str] = []
 
     # The verified doctor who owns this clinic's WhatsApp number.
     # WhatsApp-booked appointments are assigned to this doctor.

@@ -1,4 +1,4 @@
-# Claude Code Rules
+﻿# Claude Code Rules
 
 This file is generated during init for the selected agent.
 
@@ -195,6 +195,38 @@ If ALL true, suggest:
    Document reasoning and tradeoffs? Run `/sp.adr [decision-title]`
 
 Wait for consent; never auto-create ADRs. Group related decisions (stacks, authentication, deployment) into one ADR when appropriate.
+
+## Project: UAE Doctor Booking Agent MVP
+
+**Channels** (only these 2):
+1. WhatsApp Booking (text + voice message, Arabic + English)
+2. Email Confirmation
+
+**Phases:**
+
+**PHASE 1 — BACKEND**
+- FastAPI + PostgreSQL
+- Doctor auth system (login, signup, forgot/reset password)
+- WhatsApp agent (Groq llama-driven conversation + booking, Groq Whisper speech-to-text, ElevenLabs text-to-speech, auto-detected Arabic/English)
+- Email confirmation (SendGrid, basic template only)
+- Insurance check (patient-reported, collected during booking)
+- Appointments API
+
+**PHASE 2 — FRONTEND**
+- Doctor login page
+- Simple dashboard
+- Appointments list
+- WhatsApp booking simulator (`/whatsapp-test`, dev/test tool)
+
+**Active skills** (`.claude/skills/`):
+1. `whatsapp-skill` — WhatsApp transport (Twilio), bilingual conversation state machine, STT/TTS, HIPAA/NABIDH rules, insurance check, browser simulator endpoint
+2. `appointment-booking-skill` — shared slot/hold/booking core used by the WhatsApp channel, basic email confirmation
+3. `doctor-auth-admin-skill` — doctor auth + dashboard data
+4. `frontend-dashboard-skill` — staff dashboard (Phase 2)
+
+**Removed from MVP scope** (do not reintroduce without explicit user request): RAG/pgvector knowledge base, Stripe payments, multi-template SendGrid flows (email confirmation is basic-template only), Brave Search MCP, daily-report cron, Twilio SMS and Twilio Voice channels (replaced by WhatsApp for the UAE pivot), Facebook/Instagram channels.
+
+**MCPs**: only PostgreSQL, GitHub, and Filesystem are in scope for this project. (Note: as of the last check, no MCP servers are actually wired up in this repo's config — this list reflects intended scope, not a live connection state.)
 
 ## Basic Project Structure
 

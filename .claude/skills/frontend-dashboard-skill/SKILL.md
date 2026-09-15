@@ -5,7 +5,7 @@ description: Builds the Next.js medical dashboard frontend (staff-facing) and pu
 
 # Frontend Dashboard Skill
 
-Implementation-only skill for the Next.js frontend. **Sequenced after the backend**: [[sms-handler-skill]], [[conversation-agent-skill]], [[hipaa-compliance-skill]], [[appointment-booking-skill]], and [[env-config-skill]] are the patient-facing SMS backend; this skill is a separate staff dashboard + public web booking surface that talks to that backend over REST. Do not start building this until the backend API contract below actually exists. Work covered by this skill goes straight to implementation — do not route it through `/sp.specify`, `/sp.plan`, or `/sp.tasks`.
+Implementation-only skill for the Next.js frontend. **Sequenced after the backend**: [[whatsapp-skill]] and [[appointment-booking-skill]] are the patient-facing booking backend; this skill is a separate staff dashboard + public web booking surface that talks to that backend over REST. Do not start building this until the backend API contract below actually exists. Work covered by this skill goes straight to implementation — do not route it through `/sp.specify`, `/sp.plan`, or `/sp.tasks`.
 
 ## ⚠️ New backend dependencies this skill assumes
 
@@ -13,7 +13,7 @@ Every prior backend skill exposes **internal Python functions**, not HTTP endpoi
 
 - **Doctor auth** — resolved by [[doctor-auth-admin-skill]] (`doctors` table, `/auth/*` endpoints, JWT issuance/revocation). Note: that skill's schema is **doctor-only, no roles** — there is no `staff` table and no `front_desk`/`admin` distinction. Every logged-in user is a doctor with full access to their own dashboard/settings. The "role-gated" language earlier versions of this skill used no longer applies; see the Settings page section below.
 - **Payments** — Stripe integration (payment intents, webhooks) for the copay collection step on the public booking page. Still not covered by any existing skill — needs its own backend work (e.g. a `billing-payments-skill`). `GET /dashboard/revenue`'s pending-payments/revenue figures are blocked on this too (see [[doctor-auth-admin-skill]]'s dashboard-data section).
-- **REST wrappers** around [[appointment-booking-skill]]'s functions (`list_available_slots`, `hold_slot`, `confirm_booking`, `cancel_appointment`) and [[conversation-agent-skill]]/[[hipaa-compliance-skill]]'s `patients` data — currently internal, need HTTP routes.
+- **REST wrappers** around [[appointment-booking-skill]]'s functions (`list_available_slots`, `hold_slot`, `confirm_booking`, `cancel_appointment`) and [[whatsapp-skill]]'s `patients` data — currently internal, need HTTP routes.
 
 Treat the endpoint list under "Backend API contract" below as what this skill needs to exist, not something it builds itself.
 
@@ -62,20 +62,20 @@ Treat the endpoint list under "Backend API contract" below as what this skill ne
 ### 3. Patient Records Page (`/dashboard/patients`)
 
 - Patient list (name, phone, last visit) and per-patient appointment history.
-- **No diagnosis field exists anywhere in the current data model** — [[hipaa-compliance-skill]]'s "never includes diagnosis" rule means there's structurally nothing to accidentally render here. Don't add a notes/diagnosis field to satisfy this page without checking with the user first.
-- `patients.name` is stored encrypted at the DB layer per [[hipaa-compliance-skill]], but decryption happens server-side (the SQLAlchemy `TypeDecorator` is transparent) — API responses already contain plaintext name. The frontend never handles encryption/decryption itself.
+- **No diagnosis field exists anywhere in the current data model** — [[whatsapp-skill]]'s "never includes diagnosis" rule means there's structurally nothing to accidentally render here. Don't add a notes/diagnosis field to satisfy this page without checking with the user first.
+- `patients.name` is stored encrypted at the DB layer per [[whatsapp-skill]], but decryption happens server-side (the SQLAlchemy `TypeDecorator` is transparent) — API responses already contain plaintext name. The frontend never handles encryption/decryption itself.
 - No sensitive data cached in browser storage: use in-memory query state (React Query/SWR) only, never persist patient data to `localStorage`/`sessionStorage`.
 
 ### 4. Settings Page (`/dashboard/settings`)
 
 - Clinic info (practice name, address) and working hours.
 - Doctor profile management — this replaces the originally-planned "Staff management" section, since [[doctor-auth-admin-skill]]'s schema has no multi-role staff concept: form for the signed-in doctor's own `name`/`clinic_name`/`phone`/`state` (maps to `PUT /auth/profile/update`) plus a change-password flow (current password required). If multi-account staff management is needed later, that's a backend schema extension first, not something to build speculatively on the frontend now.
-- Twilio/Groq config: **read-only status display only** (e.g. "Twilio: connected", masked account SID) — never render or accept raw secret values (`TWILIO_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `ENCRYPTION_KEY`) in the browser, ever. The backend must expose a masked/status endpoint per [[env-config-skill]]'s `SecretStr` handling, not the raw `.env` values. Don't build this page as a form that edits `.env` contents directly.
+- Twilio/Groq config: **read-only status display only** (e.g. "Twilio: connected", masked account SID) — never render or accept raw secret values (`TWILIO_AUTH_TOKEN`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY`, `ENCRYPTION_KEY`) in the browser, ever. The backend must expose a masked/status endpoint (secrets held as `SecretStr` server-side), not the raw `.env` values. Don't build this page as a form that edits `.env` contents directly.
 
 ### 5. Patient Booking Page (`/book`, public, no auth)
 
 - Select service → pick date/time (reads open slots via the REST wrapper around `list_available_slots`) → intake form (name, phone, DOB; no diagnosis/reason-for-visit field beyond a non-clinical category picklist) → pay copay via Stripe Payment Element.
-- This page collects PHI from the public internet outside the SMS channel — apply the same consent principle as [[hipaa-compliance-skill]]'s `consents` table: web bookings should write a consent record through the same mechanism (method `web_form` instead of `sms_reply`), not silently collect data without an equivalent disclosure/consent step.
+- This page collects PHI from the public internet outside the WhatsApp channel — apply the same consent principle as [[whatsapp-skill]]'s consent flow: web bookings should write a consent record through an equivalent mechanism (method `web_form` instead of `whatsapp`), not silently collect data without an equivalent disclosure/consent step.
 
 ## Backend API contract (assumed — see the dependency warning above)
 
@@ -84,14 +84,14 @@ Treat the endpoint list under "Backend API contract" below as what this skill ne
 | `POST /auth/signup`, `POST /auth/verify-email`, `POST /auth/login`, `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/logout`, `GET /auth/profile`, `PUT /auth/profile/update` | [[doctor-auth-admin-skill]] — full auth + profile lifecycle |
 | `GET /dashboard/stats`, `GET /dashboard/revenue`, `GET /dashboard/recent-bookings` | [[doctor-auth-admin-skill]] — revenue/pending-payments fields are placeholder (`0`/`null`) until a payments backend exists |
 | `GET /appointments`, `POST /appointments/{id}/cancel`, `POST /appointments/{id}/reschedule` | Wraps [[appointment-booking-skill]] |
-| `GET /patients`, `GET /patients/{id}` | Wraps [[conversation-agent-skill]]/[[hipaa-compliance-skill]] patient data |
+| `GET /patients`, `GET /patients/{id}` | Wraps [[whatsapp-skill]] patient data |
 | `GET /settings/clinic`, `PUT /settings/clinic` | Clinic info + hours |
 | `GET /settings/integrations` | Masked Twilio/Anthropic/Groq status — never raw secrets |
 | `GET /public/services`, `GET /public/slots`, `POST /public/bookings`, `POST /public/payments/intent` | Public booking page (last one creates a Stripe payment intent — not yet built) |
 
 No `/staff` endpoints — there's no multi-account staff management in this MVP (see [[doctor-auth-admin-skill]]).
 
-## HIPAA rules (frontend-specific, layered on [[hipaa-compliance-skill]])
+## HIPAA rules (frontend-specific, layered on the HIPAA/NABIDH rules owned by [[whatsapp-skill]])
 
 - **No diagnosis shown** — enforced structurally by the data model having no diagnosis field; never add one to satisfy a UI request without flagging it first.
 - **Encrypted API calls** — HTTPS required for any non-local environment. `http://localhost:8000` is fine for local dev only; staging/production must be HTTPS, which is a deployment requirement, not something this skill's code enforces on its own.

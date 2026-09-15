@@ -1,20 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import api from "@/lib/api";
-import { clearTokens } from "@/lib/auth";
 import { formatDate, formatStatus } from "@/lib/utils";
 import AuthGuard from "@/components/auth-guard";
 import InactivityLogout from "@/components/inactivity-logout";
+import Navbar from "@/components/navbar";
 
 interface Appointment {
   id: string;
   scheduled_at: string | null;
   status: string;
   booking_channel: string;
-  patient_id: string;
+  patient_name: string;
+  reason_for_visit: string;
+  branch: string;
   duration_minutes: number;
 }
 
@@ -28,15 +28,13 @@ export default function AppointmentsPage() {
 }
 
 function AppointmentsContent() {
-  const router = useRouter();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [cancelling, setCancelling] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "scheduled" | "cancelled" | "completed">("all");
+  const [loading, setLoading]           = useState(true);
+  const [cancelling, setCancelling]     = useState<string | null>(null);
+  const [filter, setFilter]             = useState<"all" | "scheduled" | "cancelled" | "completed">("all");
 
   useEffect(() => {
-    api
-      .get("/appointments")
+    api.get("/appointments")
       .then((res) => setAppointments(res.data))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -57,35 +55,18 @@ function AppointmentsContent() {
     }
   }
 
-  function logout() {
-    clearTokens();
-    router.push("/login");
-  }
-
-  const filtered = filter === "all" ? appointments : appointments.filter((a) => a.status === filter);
+  const filtered =
+    filter === "all" ? appointments : appointments.filter((a) => a.status === filter);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-bold">+</span>
-          </div>
-          <span className="font-semibold text-gray-900">Doctor Portal</span>
-        </div>
-        <div className="flex gap-4 items-center">
-          <Link href="/dashboard" className="text-sm text-blue-600 hover:underline">Dashboard</Link>
-          <button onClick={logout} className="text-sm text-gray-500 hover:text-red-600 transition">
-            Logout
-          </button>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-6">All Appointments</h1>
 
         {/* Filter tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex flex-wrap gap-2 mb-6">
           {(["all", "scheduled", "completed", "cancelled"] as const).map((f) => (
             <button
               key={f}
@@ -99,7 +80,9 @@ function AppointmentsContent() {
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </button>
           ))}
-          <span className="ml-auto text-sm text-gray-400 self-center">{filtered.length} results</span>
+          <span className="ml-auto text-sm text-gray-400 self-center">
+            {filtered.length} results
+          </span>
         </div>
 
         {loading ? (
@@ -134,20 +117,43 @@ function AppointmentRow({
 }) {
   const statusColors: Record<string, string> = {
     scheduled: "text-green-700 bg-green-50",
-    cancelled: "text-red-700 bg-red-50",
-    completed: "text-gray-700 bg-gray-100",
+    cancelled: "text-red-700   bg-red-50",
+    completed: "text-gray-700  bg-gray-100",
   };
 
   return (
-    <div className="px-6 py-4 flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-900">{formatDate(a.scheduled_at)}</p>
-        <p className="text-xs text-gray-400 mt-0.5 capitalize">
-          {a.booking_channel} · {a.duration_minutes} min · Patient ID: {a.patient_id.slice(0, 8)}...
+    <div className="px-6 py-4 flex items-start justify-between gap-4">
+      <div className="min-w-0 flex-1">
+        {/* Patient name */}
+        <p className="text-sm font-semibold text-gray-900">
+          {a.patient_name || "Unknown Patient"}
+        </p>
+
+        {/* Date + branch */}
+        <p className="text-xs text-gray-500 mt-0.5">
+          📅 {formatDate(a.scheduled_at)}
+          {a.branch ? <span className="ml-2">📍 {a.branch}</span> : null}
+        </p>
+
+        {/* Reason for visit */}
+        {a.reason_for_visit && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            💬 {a.reason_for_visit}
+          </p>
+        )}
+
+        {/* Channel + duration */}
+        <p className="text-xs text-gray-300 mt-0.5 capitalize">
+          {a.booking_channel} · {a.duration_minutes} min
         </p>
       </div>
+
       <div className="flex items-center gap-3 flex-shrink-0">
-        <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${statusColors[a.status] || ""}`}>
+        <span
+          className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
+            statusColors[a.status] || ""
+          }`}
+        >
           {formatStatus(a.status)}
         </span>
         {a.status === "scheduled" && (
@@ -156,7 +162,7 @@ function AppointmentRow({
             disabled={cancelling}
             className="text-xs text-red-600 hover:underline disabled:opacity-50"
           >
-            {cancelling ? "Cancelling..." : "Cancel"}
+            {cancelling ? "Cancelling…" : "Cancel"}
           </button>
         )}
       </div>

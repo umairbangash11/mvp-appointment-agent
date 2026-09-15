@@ -104,6 +104,7 @@ def _extract_message(payload: dict) -> dict | None:
         return None
 
 
+
 @router.post("/simulate")
 async def whatsapp_simulate(
     phone: str = Form(...),

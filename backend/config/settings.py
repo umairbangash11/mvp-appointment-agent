@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # JWT
     SECRET_KEY: str = "change-me-in-production"
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 480  # 8 hours
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # Groq
